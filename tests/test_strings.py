@@ -178,3 +178,36 @@ def test_repair_counts_ignore_untouched_container_cells():
         a for a in report.actions if a.step == "strip_whitespace" and a.column == "a"
     ]
     assert stripped and all(a.count == 2 for a in stripped)  # the list cell is not counted
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["\u00A0N/A\u00A0", "\u200BNA\u200B"],
+)
+def test_unicode_whitespace_around_sentinels(value):
+    df = pd.DataFrame({"v": [value, "valid"]})
+
+    out = fd.clean(df, drop_empty_rows=False, drop_duplicates=False)
+
+    assert pd.isna(out["v"].iloc[0])
+    assert out["v"].iloc[1] == "valid"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("\u00A0hello\u00A0", "hello"),
+        ("\u200Bhello\u200B", "hello"),
+    ],
+)
+def test_unicode_whitespace_stripping(value, expected):
+    df = pd.DataFrame({"v": [value]})
+
+    out = fd.clean(
+        df,
+        strip_whitespace=True,
+        drop_empty_rows=False,
+        drop_duplicates=False,
+    )
+
+    assert out["v"].iloc[0] == expected
